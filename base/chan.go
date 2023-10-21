@@ -6,24 +6,24 @@ import (
 )
 
 // 无限缓存channel
-type UnboundChan struct {
-	ch     chan interface{}
+type UnboundChan[T any] struct {
+	ch     chan T
 	lock   *sync.Mutex
-	buffer []interface{}
+	buffer []T
 }
 
-func NewUnboundChan(size int32) *UnboundChan {
+func NewUnboundChan[T any](size int32) *UnboundChan[T] {
 	if size <= 0 || size > 4096 {
 		size = 4096
 	}
-	ch := &UnboundChan{
-		ch:   make(chan interface{}, size),
+	ch := &UnboundChan[T]{
+		ch:   make(chan T, size),
 		lock: &sync.Mutex{},
 	}
 	return ch
 }
 
-func (ch *UnboundChan) Put(element interface{}) {
+func (ch *UnboundChan[T]) Put(element T) {
 	ch.flush()
 	select {
 	case ch.ch <- element:
@@ -36,7 +36,7 @@ func (ch *UnboundChan) Put(element interface{}) {
 	}
 }
 
-func (ch *UnboundChan) flush() {
+func (ch *UnboundChan[T]) flush() {
 	ch.lock.Lock()
 	if len(ch.buffer) <= 0 {
 		return
@@ -53,7 +53,7 @@ func (ch *UnboundChan) flush() {
 	}
 }
 
-func (ch *UnboundChan) Get() <-chan interface{} {
+func (ch *UnboundChan[T]) Get() <-chan T {
 	ch.flush()
 	return ch.ch
 }

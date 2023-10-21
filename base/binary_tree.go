@@ -249,7 +249,7 @@ func (t *BinaryTree[T]) print(list [][]string, maxLen int, compress ...bool) {
 		p++
 	}
 	if len(compress) <= 0 || (len(compress) > 0 && !compress[0]) {
-		t.printCompress(values, lines)
+		t.printCompress(values, lines, 2)
 	}
 	for index, v := range lines {
 		v = strings.ReplaceAll(v, preSpace, _preSpace)
@@ -269,7 +269,7 @@ func (t *BinaryTree[T]) print(list [][]string, maxLen int, compress ...bool) {
 
 }
 
-func (t *BinaryTree[T]) printCompress(values, lines []string) {
+func (t *BinaryTree[T]) printCompress(values, lines []string, compressCount int) {
 	i := 0
 	maxLen := len(values[len(values)-1])
 	beginIndex := -1
@@ -307,14 +307,13 @@ func (t *BinaryTree[T]) printCompress(values, lines []string) {
 				endIndex = i
 			}
 		} else if beginIndex != -1 && endIndex != -1 {
-			if endIndex-beginIndex >= 3 {
-
+			if endIndex-beginIndex+1 > compressCount {
 				for j1 := 0; j1 < len(values); j1++ {
 					v := values[j1]
 					if i >= len(v) {
 						goto END
 					}
-					values[j1] = v[:beginIndex] + v[endIndex-1:]
+					values[j1] = v[:beginIndex] + v[endIndex+1-compressCount:]
 				}
 
 				for j2 := 1; j2 < len(lines); j2++ {
@@ -322,7 +321,7 @@ func (t *BinaryTree[T]) printCompress(values, lines []string) {
 					if i >= len(v) {
 						goto END
 					}
-					lines[j2] = v[:beginIndex] + v[endIndex-1:]
+					lines[j2] = v[:beginIndex] + v[endIndex+1-compressCount:]
 				}
 				i = beginIndex
 			}
@@ -357,29 +356,26 @@ func (t *BinaryTree[T]) Add(ele T) {
 	}
 	node := t.Root
 	var parent *BinaryTreeNode[T]
-	var res int32
+	isLeft := true
 	for node != nil {
 		parent = node
 		if node.element < ele {
 			node = node.right
+			isLeft = false
 		} else if node.element > ele {
 			node = node.left
+			isLeft = true
 		} else {
-			break
+			return
 		}
 	}
-	if res == E1LessE2 {
-		newNode := NewBinaryTreeNode(ele, parent)
+	newNode := NewBinaryTreeNode(ele, parent)
+	if !isLeft {
 		parent.right = newNode
-		t.size++
-	} else if res == E1GenerateE2 {
-		newNode := NewBinaryTreeNode(ele, parent)
-		parent.left = newNode
-		t.size++
 	} else {
-		parent.element = ele
+		parent.left = newNode
 	}
-
+	t.size++
 }
 
 func (t *BinaryTree[T]) PreOrder(cb func(node *BinaryTreeNode[T])) {
