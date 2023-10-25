@@ -7,13 +7,13 @@ import (
 
 func main() {
 	tree := base.NewBinaryTree[int]()
-
-	tree.Add(5)
-	tree.Add(6)
+	tree.Add(99)
+	tree.Add(100)
 	tree.Add(7)
-	tree.Add(8)
-	tree.Add(9)
-	tree.Add(10)
+	tree.Add(6)
+	tree.Add(5)
+	tree.Print(nil)
+	tree.Root = base.RotateRight(tree.Root)
 	tree.Print(func(node *base.BinaryTreeNode[int]) string {
 		return fmt.Sprintf("%v", node.GetElement())
 	})

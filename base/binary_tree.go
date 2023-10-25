@@ -25,6 +25,7 @@ type BinaryTreeNode[T CmpT] struct {
 	right   *BinaryTreeNode[T] //右子节点
 	element T                  //元素
 	Index   int                //在二叉树中索引,打印辅助
+	height  int                //节点的高度
 }
 
 func (n *BinaryTreeNode[T]) IsLeaf() bool {
@@ -103,6 +104,7 @@ func (t *BinaryTree[T]) getPrintList(cb func(node *BinaryTreeNode[T]) string) (r
 	if node == nil {
 		return
 	}
+	node.Index = 0 //防止旋转操作导致的索引变化
 	if cb == nil {
 		cb = func(node *BinaryTreeNode[T]) string {
 			return fmt.Sprintf("%v", node.element)
@@ -260,6 +262,7 @@ func (t *BinaryTree[T]) print(list [][]string, maxLen int, compress ...bool) {
 		v = strings.ReplaceAll(v, postSpace, _postSpace)
 		lines[index] = v
 	}
+	fmt.Println("===================================================================")
 	for index, v := range values {
 		fmt.Println(v)
 		if index+1 < len(values) {
@@ -571,4 +574,69 @@ func (t *BinaryTree[T]) remove1(node *BinaryTreeNode[T]) {
 			node.left.parent = node.parent
 		}
 	}
+}
+
+func (t *BinaryTree[T]) updateHeight(node *BinaryTreeNode[T]) {
+	leftHeight, rightHeight := 0, 0
+	if node.left != nil {
+		leftHeight = node.left.height
+	}
+	if node.right != nil {
+		rightHeight = node.right.height
+	}
+	node.height = int(math.Max(float64(leftHeight), float64(rightHeight))) + 1
+}
+
+func (t *BinaryTree[T]) isBalance(node *BinaryTreeNode[T]) bool {
+	leftHeight, rightHeight := 0, 0
+	if node.left != nil {
+		leftHeight = node.left.height
+	}
+	if node.right != nil {
+		rightHeight = node.right.height
+	}
+	return math.Abs(float64(leftHeight-rightHeight)) > 1
+}
+
+func (t *BinaryTree[T]) afterAdd(node *BinaryTreeNode[T]) {
+
+}
+func (t *BinaryTree[T]) afterRemove(node *BinaryTreeNode[T]) {
+
+}
+
+func RotateLeft[T CmpT](node *BinaryTreeNode[T]) *BinaryTreeNode[T] {
+	parent := node.right
+	if node.parent != nil && node == node.parent.left {
+		node.parent.left = parent
+
+	} else if node.parent != nil && node == node.parent.right {
+		node.parent.right = parent
+	}
+	parent.parent = node.parent
+	node.right = parent.left
+	if node.right != nil {
+		node.right.parent = node
+	}
+	parent.left = node
+	node.parent = parent
+	return parent
+}
+
+func RotateRight[T CmpT](node *BinaryTreeNode[T]) *BinaryTreeNode[T] {
+	parent := node.left
+	if node.parent != nil && node == node.parent.left {
+		node.parent.left = parent
+	} else if node.parent != nil && node == node.parent.right {
+		node.parent.right = parent
+	}
+	parent.parent = node.parent
+	node.left = parent.right
+	if node.left != nil {
+		node.left.parent = node
+	}
+	parent.right = node
+	node.parent = parent
+
+	return parent
 }
