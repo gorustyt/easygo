@@ -2,11 +2,20 @@ package base
 
 import (
 	"cmp"
-	"fmt"
 	"math"
-	"strings"
-	"unicode"
 )
+
+const (
+	BinarySearchTreeType = iota
+	AvlTreeType
+	RbTreeType
+)
+
+func NewRbTree[T CmpT]() *BinaryTree[T] {
+	tree := NewBinaryTree[T]()
+	tree.TreeType = RbTreeType
+	return tree
+}
 
 type CmpT interface {
 	any
@@ -15,8 +24,9 @@ type CmpT interface {
 
 // 二叉树
 type BinaryTree[T CmpT] struct {
-	size int
-	Root *BinaryTreeNode[T]
+	size     int
+	Root     *BinaryTreeNode[T]
+	TreeType int
 }
 
 type BinaryTreeNode[T CmpT] struct {
@@ -26,8 +36,70 @@ type BinaryTreeNode[T CmpT] struct {
 	element T                  //元素
 	Index   int                //在二叉树中索引,打印辅助
 	height  int                //节点的高度
+	isBlack bool               //是否式黑色
 }
 
+func (n *BinaryTreeNode[T]) tallerChild() (node *BinaryTreeNode[T]) {
+	if n == nil {
+		return nil
+	}
+	node = n.left
+	if n.LeftHeight() < n.RightHeight() {
+		node = n.right
+	}
+	return
+}
+func (n *BinaryTreeNode[T]) Height() int {
+	return n.height
+}
+func (n *BinaryTreeNode[T]) ColorRed() {
+	n.isBlack = false
+}
+func (n *BinaryTreeNode[T]) ColorBlack() {
+	n.isBlack = true
+}
+func (n *BinaryTreeNode[T]) IsBlack() bool {
+	return n == nil || n.isBlack
+}
+func (n *BinaryTreeNode[T]) IsRed() bool {
+	return !n.IsBlack()
+}
+func (n *BinaryTreeNode[T]) IsLeftChild() bool {
+	if n == nil {
+		return false
+	}
+	return n.parent != nil && n.parent.left == n
+}
+func (n *BinaryTreeNode[T]) IsRightChild() bool {
+	if n == nil {
+		return false
+	}
+	return n.parent != nil && n.parent.right == n
+}
+
+// avl树是否平衡
+func (n *BinaryTreeNode[T]) IsAvlBalance() bool {
+	return math.Abs(float64(n.LeftHeight()-n.RightHeight())) <= 1
+}
+
+func (n *BinaryTreeNode[T]) LeftHeight() int {
+	if n.left == nil {
+		return 0
+	}
+	return n.left.height
+}
+func (n *BinaryTreeNode[T]) RightHeight() int {
+	if n.right == nil {
+		return 0
+	}
+	return n.right.height
+}
+func (n *BinaryTreeNode[T]) UpdateHeight() {
+	if n == nil {
+		return
+	}
+	n.height = int(math.Max(float64(n.LeftHeight()), float64(n.RightHeight()))) + 1
+}
 func (n *BinaryTreeNode[T]) IsLeaf() bool {
 	return n.left == nil && n.right == nil
 }
@@ -45,6 +117,7 @@ func (n *BinaryTreeNode[T]) GetElement() interface{} {
 	}
 	return n.element
 }
+
 func NewBinaryTreeNode[T CmpT](element T, parent *BinaryTreeNode[T]) *BinaryTreeNode[T] {
 	return &BinaryTreeNode[T]{
 		parent:  parent,
@@ -98,262 +171,10 @@ func (t *BinaryTree[T]) heightByIter(node *BinaryTreeNode[T]) (height int) {
 	return
 }
 
-// 获取二叉树的每一层节点索引
-func (t *BinaryTree[T]) getPrintList(cb func(node *BinaryTreeNode[T]) string) (res [][]string, maxLen int) {
-	node := t.Root
-	if node == nil {
-		return
-	}
-	node.Index = 0 //防止旋转操作导致的索引变化
-	if cb == nil {
-		cb = func(node *BinaryTreeNode[T]) string {
-			return fmt.Sprintf("%v", node.element)
-		}
-	}
-	que := NewSimpleQueue()
-	que.Offer(node)
-	size := 1
-	height := 0
-	arr := make([]string, int(math.Pow(2, float64(height))))
-	//获取元素最大字符长度
-	for que.Len() != 0 {
-		node = que.Poll().(*BinaryTreeNode[T])
-		index := node.Index - (int(math.Pow(2, float64(height))) - 1)
-		arr[index] = cb(node)
-		length := t.getPrintCount(arr[index])
-		if length > maxLen {
-			maxLen = length
-		}
-		size--
-		if node.left != nil {
-			node.left.Index = 2*node.Index + 1
-			que.Offer(node.left)
-		}
-		if node.right != nil {
-			node.right.Index = 2*node.Index + 2
-			que.Offer(node.right)
-		}
-		if size == 0 {
-			res = append(res, arr)
-			height++
-			arr = make([]string, int(math.Pow(2, float64(height))))
-			size = que.Len()
-		}
-	}
-	return
-}
-
-// //树状字符
-// //"└" "─" "┌─────────┴─────────┐" "┬"
-// //"├"
-// //"─┴─"
-func (t *BinaryTree[T]) Print(cb func(node *BinaryTreeNode[T]) string, compress ...bool) {
-	list, maxLen := t.getPrintList(cb)
-	if maxLen%2 == 0 {
-		maxLen++
-	}
-	//填充长度
-	for i, arr := range list {
-		for j, v := range arr {
-			length := t.getPrintCount(v)
-			if len(v) == maxLen {
-				continue
-			}
-			delta := maxLen - length
-			leftCount := delta / 2
-			rightCount := delta - leftCount
-			list[i][j] = fmt.Sprintf("%v%v%v",
-				strings.Repeat(space, leftCount),
-				v,
-				strings.Repeat(space, rightCount),
-			)
-		}
-	}
-	t.print(list, maxLen)
-}
-
-var (
-	space      = " "
-	_preSpace  = "┌"
-	_preSpace1 = "┴"
-	_preSpace2 = "┘"
-	_preSpace3 = "└"
-	_inSpace   = "─"
-	_postSpace = "┐"
-
-	preSpace  = "/"
-	preSpace1 = "^"
-	preSpace2 = "$"
-	preSpace3 = "@"
-	inSpace   = "~"
-	postSpace = "\\"
-)
-
-func (t *BinaryTree[T]) print(list [][]string, maxLen int, compress ...bool) {
-	p := 0
-	values := make([]string, len(list))
-	lines := make([]string, len(list))
-	for i := len(list) - 1; i >= 0; i-- {
-		preValue := strings.Repeat(space, maxLen*int(math.Pow(2, float64(p))))
-		preLine := strings.Repeat(space, maxLen*int(math.Pow(2, float64(p)))+maxLen/2)
-		valueInterStr := strings.Repeat(space, maxLen*int(math.Pow(2, float64(p+1))-1))
-		lineInterStr := strings.Repeat(space, maxLen*int(math.Pow(2, float64(p+1))-1)+maxLen/2*2)
-		lineHalfInterStr := strings.Repeat(inSpace, maxLen*int(math.Pow(2, float64(p))-1)+maxLen/2+maxLen/2)
-		lineHalfSpaceStr := strings.ReplaceAll(lineHalfInterStr, inSpace, space)
-		valueStr := preValue
-		lineStr := preLine
-		for j := 0; j < len(list[i]); j += 2 {
-			leftNode := list[i][j]
-			valueStr += leftNode
-			valueStr += valueInterStr
-			if j+1 >= len(list[i]) {
-				break
-			}
-			rightNode := list[i][j+1]
-			leftEmpty := strings.TrimSpace(leftNode) == ""
-			rightEmpty := strings.TrimSpace(rightNode) == ""
-			//处理值打印
-
-			valueStr += rightNode
-			valueStr += valueInterStr
-			//处理字符打印
-			if !leftEmpty && !rightEmpty {
-				lineStr += preSpace
-				lineStr += lineHalfInterStr
-				lineStr += preSpace1
-				lineStr += lineHalfInterStr
-				lineStr += postSpace
-			} else if !leftEmpty && rightEmpty {
-				lineStr += preSpace
-				lineStr += lineHalfInterStr
-				lineStr += preSpace2
-				lineStr += lineHalfSpaceStr
-				lineStr += space
-			} else if leftEmpty && !rightEmpty {
-				lineStr += space
-				lineStr += lineHalfSpaceStr
-				lineStr += preSpace3
-				lineStr += lineHalfInterStr
-				lineStr += postSpace
-			} else if leftEmpty && rightEmpty {
-				lineStr += space
-				lineStr += lineHalfSpaceStr
-				lineStr += space
-				lineStr += lineHalfSpaceStr
-				lineStr += space
-			}
-			lineStr += lineInterStr
-		}
-		values[i] = valueStr
-		lines[i] = lineStr
-		valueStr = ""
-		lineStr = ""
-		p++
-	}
-	if len(compress) <= 0 || (len(compress) > 0 && !compress[0]) {
-		t.printCompress(values, lines, 2)
-	}
-	for index, v := range lines {
-		v = strings.ReplaceAll(v, preSpace, _preSpace)
-		v = strings.ReplaceAll(v, preSpace1, _preSpace1)
-		v = strings.ReplaceAll(v, preSpace2, _preSpace2)
-		v = strings.ReplaceAll(v, preSpace3, _preSpace3)
-		v = strings.ReplaceAll(v, inSpace, _inSpace)
-		v = strings.ReplaceAll(v, postSpace, _postSpace)
-		lines[index] = v
-	}
-	fmt.Println("===================================================================")
-	for index, v := range values {
-		fmt.Println(v)
-		if index+1 < len(values) {
-			fmt.Println(lines[index+1])
-		}
-	}
-
-}
-
-func (t *BinaryTree[T]) printCompress(values, lines []string, compressCount int) {
-	i := 0
-	maxLen := len(values[len(values)-1])
-	beginIndex := -1
-	endIndex := -1
-	for {
-		var (
-			canCompress = true
-		)
-		for j1 := 0; j1 < len(values); j1++ {
-			v := values[j1]
-			if i >= len(v) {
-				continue
-			}
-			v1 := v[i : i+1]
-			if v1 != space && v1 != inSpace {
-				canCompress = false
-			}
-		}
-
-		for j2 := 1; j2 < len(lines); j2++ {
-			v := lines[j2]
-			if i >= len(v) {
-				continue
-			}
-			line1 := v[i : i+1]
-			if line1 != space && line1 != inSpace {
-				canCompress = false
-			}
-		}
-		if canCompress {
-			if beginIndex == -1 && endIndex == -1 {
-				beginIndex = i
-				endIndex = i
-			} else {
-				endIndex = i
-			}
-		} else if beginIndex != -1 && endIndex != -1 {
-			if endIndex-beginIndex+1 > compressCount {
-				for j1 := 0; j1 < len(values); j1++ {
-					v := values[j1]
-					if i >= len(v) {
-						goto END
-					}
-					values[j1] = v[:beginIndex] + v[endIndex+1-compressCount:]
-				}
-
-				for j2 := 1; j2 < len(lines); j2++ {
-					v := lines[j2]
-					if i >= len(v) {
-						goto END
-					}
-					lines[j2] = v[:beginIndex] + v[endIndex+1-compressCount:]
-				}
-				i = beginIndex
-			}
-			beginIndex = -1
-			endIndex = -1
-			continue
-		}
-	END:
-		i++
-		if i >= maxLen {
-			break
-		}
-	}
-}
-
-func (t *BinaryTree[T]) getPrintCount(str string) (count int) {
-	for _, v := range str {
-		if unicode.Is(unicode.Han, v) {
-			count += 2 //汉字加两个字符
-		} else {
-			count++
-		}
-	}
-	return
-}
-
 func (t *BinaryTree[T]) Add(ele T) {
 	if t.Root == nil {
 		t.Root = NewBinaryTreeNode[T](ele, nil)
+		t.afterAdd(t.Root)
 		t.size++
 		return
 	}
@@ -378,6 +199,7 @@ func (t *BinaryTree[T]) Add(ele T) {
 	} else {
 		parent.left = newNode
 	}
+	t.afterAdd(newNode)
 	t.size++
 }
 
@@ -393,6 +215,7 @@ func (t *BinaryTree[T]) preOrder(node *BinaryTreeNode[T], cb func(node *BinaryTr
 	t.preOrder(node.left, cb)
 	t.preOrder(node.right, cb)
 }
+
 func (t *BinaryTree[T]) InOrder(cb func(node *BinaryTreeNode[T])) {
 	t.inOrder(t.Root, cb)
 
@@ -520,17 +343,23 @@ func (t *BinaryTree[T]) Remove(ele T) {
 		return
 	}
 	if node.IsLeaf() { //是叶子节点
+		isLeft := node.IsLeftChild()
 		t.removeLeaf(node)
+		t.afterRemove(node, isLeft)
 	} else if node.HasTwoChildren() { //度为2的节点
 		replaceNode := t.FindSuccessor(node)
 		node.element = replaceNode.element
+		isLeft := replaceNode.IsLeftChild()
 		if replaceNode.IsLeaf() { //是叶子节点
 			t.removeLeaf(replaceNode)
 		} else {
 			t.remove1(replaceNode)
 		}
+		t.afterRemove(replaceNode, isLeft)
 	} else { //度为1的节点
-		t.remove1(node)
+		isLeft := node.IsLeftChild()
+		node = t.remove1(node)
+		t.afterRemove(node, isLeft)
 	}
 	t.size--
 }
@@ -546,7 +375,7 @@ func (t *BinaryTree[T]) removeLeaf(node *BinaryTreeNode[T]) {
 }
 
 // 移除度为1的节点
-func (t *BinaryTree[T]) remove1(node *BinaryTreeNode[T]) {
+func (t *BinaryTree[T]) remove1(node *BinaryTreeNode[T]) (replacement *BinaryTreeNode[T]) {
 	if node.parent == nil { //移除根节点
 		if node.left != nil {
 			t.Root = node.left
@@ -559,21 +388,26 @@ func (t *BinaryTree[T]) remove1(node *BinaryTreeNode[T]) {
 	}
 	if node == node.parent.left {
 		if node.left != nil {
+			replacement = node.left
 			node.parent.left = node.left
 			node.left.parent = node.parent
 		} else {
+			replacement = node.right
 			node.parent.left = node.right
 			node.right.parent = node.parent
 		}
 	} else {
 		if node.right != nil {
+			replacement = node.right
 			node.parent.right = node.right
 			node.right.parent = node.parent
 		} else {
+			replacement = node.left
 			node.parent.right = node.left
 			node.left.parent = node.parent
 		}
 	}
+	return
 }
 
 func (t *BinaryTree[T]) updateHeight(node *BinaryTreeNode[T]) {
@@ -598,19 +432,194 @@ func (t *BinaryTree[T]) isBalance(node *BinaryTreeNode[T]) bool {
 	return math.Abs(float64(leftHeight-rightHeight)) > 1
 }
 
+func (t *BinaryTree[T]) fixUpAvl(node *BinaryTreeNode[T]) {
+	for node != nil {
+		if node.IsAvlBalance() {
+			node.UpdateHeight()
+		} else {
+			parent := node.tallerChild()
+			child := parent.tallerChild()
+			if parent.IsLeftChild() && child.IsLeftChild() {
+				parent = node
+				node = RotateRight(node)
+			} else if parent.IsRightChild() && child.IsRightChild() {
+				parent = node
+				node = RotateLeft(node)
+			} else if parent.IsLeftChild() && child.IsRightChild() {
+				child = parent
+				RotateLeft(parent)
+				parent = node
+				node = RotateRight(node)
+			} else {
+				child = parent
+				RotateRight(parent)
+				parent = node
+				node = RotateLeft(node)
+			}
+			child.UpdateHeight()
+			parent.UpdateHeight()
+			node.UpdateHeight()
+		}
+		if node.parent == nil {
+			t.Root = node
+		}
+		node = node.parent
+	}
+}
+
+func (t *BinaryTree[T]) fixRbTreeAdd(node *BinaryTreeNode[T]) {
+	parent := node.parent
+	if node == t.Root || parent == nil {
+		t.Root = node
+		node.ColorBlack()
+		return
+	}
+	p := t.Root
+	if parent.IsBlack() {
+		return
+	}
+	if parent.IsLeftChild() {
+		if parent.parent.right.IsRed() { //第一种情况
+			parent.parent.ColorRed()
+			parent.ColorBlack()
+			parent.parent.right.ColorBlack()
+			t.afterAdd(parent.parent)
+		} else if node.IsLeftChild() {
+			parent.ColorBlack()
+			parent.parent.ColorRed()
+			p = RotateRight(parent.parent)
+		} else if node.IsRightChild() {
+			parent = RotateLeft(parent)
+			parent.ColorBlack()
+			parent.parent.ColorRed()
+			p = RotateRight(parent.parent)
+		}
+	} else {
+		if parent.parent.left.IsRed() { //第一种情况
+			parent.parent.ColorRed()
+			parent.ColorBlack()
+			parent.parent.left.ColorBlack()
+			t.afterAdd(parent.parent)
+		} else if node.IsRightChild() {
+			parent.ColorBlack()
+			parent.parent.ColorRed()
+			p = RotateLeft(parent.parent)
+		} else if node.IsLeftChild() {
+			parent = RotateRight(parent)
+			parent.ColorBlack()
+			parent.parent.ColorRed()
+			p = RotateLeft(parent.parent)
+		}
+	}
+	if p.parent == nil {
+		p.ColorBlack()
+		t.Root = p
+	}
+}
+
+func (t *BinaryTree[T]) fixRbTreeRemove(x *BinaryTreeNode[T], isLeft bool) {
+	var p = t.Root
+	for x.parent != nil && x.IsBlack() {
+		if isLeft {
+			w := x.parent.right
+			if w.IsRed() {
+				x.parent.ColorRed()
+				w.ColorBlack()
+				p = RotateLeft(x.parent)
+				w = x.parent.right
+			}
+			if w.left.IsBlack() && w.right.IsBlack() {
+				w.ColorRed()
+				x = x.parent
+				isLeft = x.parent.IsLeftChild()
+			} else {
+				if w.left.IsRed() {
+					w.left.ColorBlack()
+					w.ColorRed()
+					RotateRight(w)
+					w = x.parent.right
+				}
+				if x.parent.IsBlack() {
+					w.ColorBlack()
+				} else {
+					w.ColorRed()
+				}
+				w.right.ColorBlack()
+				x.parent.ColorBlack()
+				p = RotateLeft(x.parent)
+			}
+		} else {
+			w := x.parent.left
+			if w.IsRed() {
+				x.parent.ColorRed()
+				w.ColorBlack()
+				p = RotateRight(x.parent)
+				w = x.parent.left
+			}
+			if w.left.IsBlack() && w.right.IsBlack() {
+				w.ColorRed()
+				x = x.parent
+				isLeft = x.parent.IsLeftChild()
+			} else {
+				if w.right.IsRed() {
+					w.right.ColorBlack()
+					w.ColorRed()
+					RotateLeft(w)
+					w = x.parent.left
+				}
+				if x.parent.IsBlack() {
+					w.ColorBlack()
+				} else {
+					w.ColorRed()
+				}
+				w.left.ColorBlack()
+				x.parent.ColorBlack()
+				p = RotateRight(x.parent)
+			}
+		}
+	}
+	if p != nil && p.parent == nil {
+		p.ColorBlack()
+		t.Root = p
+	}
+	if x != nil && x.parent == nil {
+		x.ColorBlack()
+		t.Root = x
+	}
+	if x.IsRed() {
+		x.ColorBlack()
+		return
+	}
+}
+
 func (t *BinaryTree[T]) afterAdd(node *BinaryTreeNode[T]) {
+	switch t.TreeType {
+	case BinarySearchTreeType:
+	case AvlTreeType:
+		t.fixUpAvl(node)
+	case RbTreeType:
+		t.fixRbTreeAdd(node)
+	}
 
 }
-func (t *BinaryTree[T]) afterRemove(node *BinaryTreeNode[T]) {
 
+func (t *BinaryTree[T]) afterRemove(node *BinaryTreeNode[T], isLeft bool) {
+	if node.parent == nil {
+		return
+	}
+	switch t.TreeType {
+	case AvlTreeType:
+		t.fixUpAvl(node)
+	case RbTreeType:
+		t.fixRbTreeRemove(node, isLeft)
+	}
 }
 
 func RotateLeft[T CmpT](node *BinaryTreeNode[T]) *BinaryTreeNode[T] {
 	parent := node.right
-	if node.parent != nil && node == node.parent.left {
+	if node.parent != nil && node.IsLeftChild() {
 		node.parent.left = parent
-
-	} else if node.parent != nil && node == node.parent.right {
+	} else if node.parent != nil && node.IsRightChild() {
 		node.parent.right = parent
 	}
 	parent.parent = node.parent
@@ -625,9 +634,9 @@ func RotateLeft[T CmpT](node *BinaryTreeNode[T]) *BinaryTreeNode[T] {
 
 func RotateRight[T CmpT](node *BinaryTreeNode[T]) *BinaryTreeNode[T] {
 	parent := node.left
-	if node.parent != nil && node == node.parent.left {
+	if node.parent != nil && node.IsLeftChild() {
 		node.parent.left = parent
-	} else if node.parent != nil && node == node.parent.right {
+	} else if node.parent != nil && node.IsRightChild() {
 		node.parent.right = parent
 	}
 	parent.parent = node.parent

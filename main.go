@@ -3,18 +3,26 @@ package main
 import (
 	"fmt"
 	"github.com/lirongyangtao/mygo/base"
+	"time"
 )
 
 func main() {
-	tree := base.NewBinaryTree[int]()
-	tree.Add(99)
-	tree.Add(100)
-	tree.Add(7)
-	tree.Add(6)
-	tree.Add(5)
-	tree.Print(nil)
-	tree.Root = base.RotateRight(tree.Root)
-	tree.Print(func(node *base.BinaryTreeNode[int]) string {
-		return fmt.Sprintf("%v", node.GetElement())
-	})
+	tree := base.NewRbTree[int]()
+	cb := func(node *base.BinaryTreeNode[int]) string {
+		if node.IsRed() {
+			return fmt.Sprintf("%v(red)", node.GetElement())
+		}
+		return fmt.Sprintf("%v(black)", node.GetElement())
+	}
+	arr := []int{99, 100, 7, 5, 4, 3, 2, 1}
+	for _, v := range arr {
+		tree.Add(v)
+		base.PrintBinaryTree(tree.Root, cb)
+	}
+
+	for i := len(arr) - 1; i >= 0; i-- {
+		tree.Remove(arr[i])
+		base.PrintBinaryTree(tree.Root, cb)
+	}
+	time.Sleep(1 * time.Second)
 }
