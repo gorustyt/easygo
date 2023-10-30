@@ -27,8 +27,10 @@ func main() {
 	//time.Sleep(1 * time.Second)
 
 	wheel := apply.NewTimeWheel()
-	wheel.AddNode(3*time.Second, func() {
+	now := time.Now()
+	wheel.AddNode(1*time.Second, func() {
 		fmt.Println("hellol")
+		fmt.Println(time.Since(now).Milliseconds())
 	})
 	time.Sleep(1000 * time.Second)
 }

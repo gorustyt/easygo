@@ -50,7 +50,8 @@ func (t *TimeWheel) execute() {
 }
 
 func (t *TimeWheel) AddNode(duration time.Duration, handle TimeWheelHandle) {
-	t.addNode(&TimerWheelNode{expire: int64(t.tick) + duration.Microseconds()/int64(interval), handle: handle})
+	tick := int64(t.tick) + duration.Milliseconds()/int64(10)
+	t.addNode(&TimerWheelNode{expire: tick, handle: handle})
 }
 
 func (t *TimeWheel) addNode(node *TimerWheelNode) {
@@ -116,14 +117,17 @@ func (t *TimeWheel) dispatch(l *list.List) {
 
 func (t *TimeWheel) Run() {
 	fmt.Println("timeWheel run start")
-	ticker := time.NewTicker(interval * time.Microsecond)
+	ticker := time.NewTicker(10 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		if t.quit {
 			break
 		}
+
 		t.Update()
+		//now := time.Now()
 		<-ticker.C
+		//fmt.Println(t.tick, time.Since(now).Microseconds())
 	}
 }
 
