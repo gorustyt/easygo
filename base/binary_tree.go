@@ -484,12 +484,10 @@ func (t *BinaryTree[T]) fixRbTreeAdd(node *BinaryTreeNode[T]) {
 			parent.ColorBlack()
 			parent.parent.right.ColorBlack()
 			t.afterAdd(parent.parent)
-		} else if node.IsLeftChild() {
-			parent.ColorBlack()
-			parent.parent.ColorRed()
-			p = RotateRight(parent.parent)
-		} else if node.IsRightChild() {
-			parent = RotateLeft(parent)
+		} else {
+			if node.IsRightChild() {
+				parent = RotateLeft(parent)
+			}
 			parent.ColorBlack()
 			parent.parent.ColorRed()
 			p = RotateRight(parent.parent)
