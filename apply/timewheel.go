@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	interval         = 2500
 	TIME_NEAR_SHIFT  = 8
 	TIME_NEAR        = 1 << TIME_NEAR_SHIFT
 	TIME_LEVEL_SHIFT = 6
@@ -49,7 +50,7 @@ func (t *TimeWheel) execute() {
 }
 
 func (t *TimeWheel) AddNode(duration time.Duration, handle TimeWheelHandle) {
-	t.addNode(&TimerWheelNode{expire: int64(t.tick + uint32(duration.Microseconds())), handle: handle})
+	t.addNode(&TimerWheelNode{expire: int64(t.tick) + duration.Microseconds()/int64(interval), handle: handle})
 }
 
 func (t *TimeWheel) addNode(node *TimerWheelNode) {
@@ -107,6 +108,7 @@ func (t *TimeWheel) update() {
 func (t *TimeWheel) dispatch(l *list.List) {
 	e := l.Front()
 	for e != nil {
+		l.Remove(e)
 		(e.Value.(*TimerWheelNode)).handle()
 		e = e.Prev()
 	}
@@ -114,7 +116,7 @@ func (t *TimeWheel) dispatch(l *list.List) {
 
 func (t *TimeWheel) Run() {
 	fmt.Println("timeWheel run start")
-	ticker := time.NewTicker(2500 * time.Microsecond)
+	ticker := time.NewTicker(interval * time.Microsecond)
 	defer ticker.Stop()
 	for {
 		if t.quit {
