@@ -26,10 +26,12 @@ func main() {
 	//}
 	//time.Sleep(1 * time.Second)
 
-	wheel := apply.NewTimeWheel()
-	go wheel.Run()
-	wheel.Schedule(1*time.Second, 1*time.Second, func(ts time.Time) {
+	wheel := apply.NewAsyncTimeWheel()
+	id := wheel.Schedule(1*time.Second, 1*time.Second, func(ts time.Time) {
 		fmt.Println("===", time.Now())
+	})
+	time.AfterFunc(5*time.Second, func() {
+		wheel.Remove(id)
 	})
 	time.Sleep(1000 * time.Second)
 }
