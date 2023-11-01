@@ -30,7 +30,8 @@ func main() {
 	id := wheel.Schedule(1*time.Second, 1*time.Second, func(ts time.Time) {
 		fmt.Println("===", time.Now())
 	})
-	time.AfterFunc(5*time.Second, func() {
+	time.AfterFunc(5100*time.Millisecond, func() {
+		fmt.Println("====stop=====", time.Now())
 		wheel.Remove(id)
 	})
 	time.Sleep(1000 * time.Second)
