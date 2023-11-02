@@ -2,37 +2,35 @@ package main
 
 import (
 	"fmt"
-	"github.com/lirongyangtao/mygo/apply"
-	"time"
+	"github.com/lirongyangtao/mygo/base"
+	"strconv"
 )
 
-func main() {
-	//tree := base.NewRbTree[int]()
-	//cb := func(node *base.BinaryTreeNode[int]) string {
-	//	if node.IsRed() {
-	//		return fmt.Sprintf("%v(red)", node.GetElement())
-	//	}
-	//	return fmt.Sprintf("%v(black)", node.GetElement())
-	//}
-	//arr := []int{99, 100, 7, 5, 4, 3, 2, 1}
-	//for _, v := range arr {
-	//	tree.Add(v)
-	//	base.PrintBinaryTree(tree.Root, cb)
-	//}
-	//
-	//for i := len(arr) - 1; i >= 0; i-- {
-	//	tree.Remove(arr[i])
-	//	base.PrintBinaryTree(tree.Root, cb)
-	//}
-	//time.Sleep(1 * time.Second)
+type Score int
 
-	wheel := apply.NewAsyncTimeWheel()
-	id := wheel.Schedule(1*time.Second, 1*time.Second, func(ts time.Time) {
-		fmt.Println("===", time.Now())
-	})
-	time.AfterFunc(5100*time.Millisecond, func() {
-		fmt.Println("====stop=====", time.Now())
-		wheel.Remove(id)
-	})
-	time.Sleep(1000 * time.Second)
+func (s Score) Less(element base.SkipElement) bool {
+	return s < element.(Score)
+}
+
+func (s Score) Key() string {
+	return strconv.Itoa(int(s))
+}
+
+func main() {
+	arr := []Score{99, 100, 1, 2, 3, 454, 6, 7, 8}
+	s := base.NewSortSet[Score]()
+	for _, v := range arr {
+		fmt.Println(s.Add(v))
+	}
+	for _, v := range arr {
+		fmt.Println(s.Add(v))
+	}
+	for _, v := range arr {
+		fmt.Println(v, s.GetRank(v.Key()))
+	}
+	fmt.Println("======================")
+	for i := 0; i <= len(arr)+3; i++ {
+		fmt.Println(i, s.GetElementRank(i))
+	}
+
 }
